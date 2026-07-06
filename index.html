@@ -227,18 +227,21 @@
             font-size: 1rem;
         }
 
-        .view-btn {
-            color: var(--primary);
-            background: none;
+        .download-btn {
+            color: #ffffff;
+            background-color: #22c55e;
+            /* Vibrant clean green download theme button */
             border: none;
             font-weight: 700;
             cursor: pointer;
-            font-size: 1rem;
-            padding: 0;
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            transition: background-color 0.1s;
         }
 
-        .view-btn:hover {
-            text-decoration: underline;
+        .download-btn:hover {
+            background-color: #16a34a;
         }
 
         .loading {
@@ -246,37 +249,6 @@
             color: #64748b;
             padding: 2rem 0;
             width: 100%;
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            margin: 5vh auto;
-            padding: 20px;
-            width: 85%;
-            max-width: 700px;
-            height: 80vh;
-            border-radius: 16px;
-            position: relative;
-        }
-
-        .close-btn {
-            position: absolute;
-            right: 20px;
-            top: 10px;
-            cursor: pointer;
-            font-size: 28px;
-            font-weight: bold;
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -291,7 +263,8 @@
                 <span class="banner-main">Select Your Paper</span>
                 <span class="banner-sub">Get the PYQs</span>
             </div>
-            <h2 id="stepHeading" class="selector-heading">Select Your University</h2>
+            <!-- Updated view layer string matching request -->
+            <h2 id="stepHeading" class="selector-heading">Select Your Institute</h2>
 
             <div class="nav-controls">
                 <button id="backBtn" class="btn-nav" onclick="goBack()" style="visibility: hidden;">← Back</button>
@@ -314,8 +287,11 @@
                 college: null,
                 course: null,
                 semester: null,
-                year: null // Track new year selection tier
+                year: null
             };
+
+            // Flags to trace skip state on backtracking runs
+            let skippedCollegeStep = false;
 
             async function renderStep() {
                 const displayArea = document.getElementById('displayArea');
@@ -331,9 +307,10 @@
                 try {
                     let query = client.from('papers_metadata');
 
-                    // LEVEL 1: Select University
+                    // LEVEL 1: Select Institute (University or Autonomous College)
                     if (!selection.university) {
-                        stepHeading.innerText = "Select Your University";
+                        stepHeading.innerText = "Select Your Institute";
+                        skippedCollegeStep = false;
                         const { data, error } = await query.select('university, uni_image_url');
                         if (error) throw error;
 
@@ -347,8 +324,23 @@
                         }
                         renderCardsGrid(uniqueUnis, 'university');
                     }
-                    // LEVEL 2: Select College
-                    else if (!selection.college) {
+                    // LEVEL 2: Select College (Only for standard affiliated paths)
+                    else if (!selection.college && !skippedCollegeStep) {
+                        // Look up check: See if this chosen entry contains any child sub-colleges
+                        const { data: checkData, error: errCheck } = await query.select('college').eq('university', selection.university);
+                        if (errCheck) throw errCheck;
+
+                        // Filtering records
+                        const actualColleges = [...new Set(checkData.map(item => item.college).filter(Boolean))];
+
+                        // If the list contains no child colleges, skip this entire layer!
+                        if (actualColleges.length === 0) {
+                            skippedCollegeStep = true;
+                            selection.college = ""; // Mark as skipped placeholder value
+                            renderStep(); // Forward navigate instantly
+                            return;
+                        }
+
                         stepHeading.innerText = "Select Your College";
                         const { data, error } = await query.select('college, col_image_url').eq('university', selection.university);
                         if (error) throw error;
@@ -394,9 +386,9 @@
                         const uniqueYears = [...new Set(data.map(item => item.year).filter(Boolean))];
                         renderFlatListView(uniqueYears, 'year');
                     }
-                    // LEVEL 6: Select Subject / View Papers
+                    // LEVEL 6: Download Selected Papers
                     else {
-                        stepHeading.innerText = "Select Your Subject";
+                        stepHeading.innerText = "Download Your Paper";
                         const { data, error } = await query.select('*')
                             .eq('university', selection.university)
                             .eq('college', selection.college)
@@ -414,7 +406,7 @@
                                 const itemHtml = `
                                     <div class="paper-item">
                                         <span class="paper-title">${paper.subject}</span>
-                                        <button class="view-btn" onclick="openPdf('${paper.file_url}')">View PDF</button>
+                                        <button class="download-btn" onclick="downloadPdf('${paper.file_url}', '${paper.subject}')">Download</button>
                                     </div>
                                 `;
                                 displayArea.insertAdjacentHTML('beforeend', itemHtml);
@@ -493,53 +485,62 @@
             }
 
             function goBack() {
-                if (selection.year) selection.year = null;
-                else if (selection.semester) selection.semester = null;
-                else if (selection.course) selection.course = null;
-                else if (selection.college) selection.college = null;
-                else if (selection.university) selection.university = null;
+                if (selection.year) {
+                    selection.year = null;
+                } else if (selection.semester) {
+                    selection.semester = null;
+                } else if (selection.course) {
+                    selection.course = null;
+                } else if (selection.college !== null) {
+                    // Check if previous navigation skipped college level
+                    if (skippedCollegeStep) {
+                        selection.university = null;
+                        selection.college = null;
+                        skippedCollegeStep = false;
+                    } else {
+                        selection.college = null;
+                    }
+                } else if (selection.university) {
+                    selection.university = null;
+                }
                 renderStep();
             }
 
-            async function openPdf(path) {
+            // High performance, secure file download logic
+            async function downloadPdf(path, filename) {
                 const loadingText = document.getElementById('loading');
-                loadingText.innerText = "Opening document window...";
+                loadingText.innerText = "Requesting download link...";
                 loadingText.style.display = 'block';
 
                 try {
+                    // Create private bucket secure short-lived temporary URL
                     const { data, error } = await client.storage
                         .from('papers')
-                        .createSignedUrl(path, 60);
+                        .createSignedUrl(path, 30);
 
                     if (error) throw error;
 
-                    document.getElementById('pdfViewer').src = data.signedUrl;
-                    document.getElementById('pdfModal').style.display = 'block';
+                    // Trigger direct native browser download action block cleanly
+                    const link = document.createElement('a');
+                    link.href = data.signedUrl;
+                    link.download = `${filename}.pdf`;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
                     loadingText.style.display = 'none';
                 } catch (err) {
-                    console.error("Secure Link Error:", err);
-                    loadingText.innerText = "Error opening file.";
+                    console.error("Download Link Failure:", err);
+                    loadingText.innerText = "Error launching file download.";
                 }
             }
 
-            function closeModal() {
-                document.getElementById('pdfModal').style.display = 'none';
-                document.getElementById('pdfViewer').src = '';
-            }
-
-            window.openPdf = openPdf;
-            window.closeModal = closeModal;
+            window.downloadPdf = downloadPdf;
             window.goBack = goBack;
             window.onload = renderStep;
         })();
     </script>
-
-    <div id="pdfModal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <iframe id="pdfViewer" src="" width="100%" height="100%"></iframe>
-        </div>
-    </div>
 
 </body>
 
