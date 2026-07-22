@@ -3,10 +3,12 @@
 import React, { useState } from 'react';
 import styles from '../styles/components/paper.module.css';
 import { useBookmarks } from '../hooks/useBookmarks';
+import ExamIntelligenceModal from './ExamIntelligenceModal';
 
 export default function PaperRow({ paper }) {
   const { isSaved, toggleSave } = useBookmarks();
   const [showShareToast, setShowShareToast] = useState(false);
+  const [showIntelligence, setShowIntelligence] = useState(false);
 
   const downloadUrl = `/api/download?id=${paper.id}`;
   const saved = isSaved(paper.id);
@@ -77,6 +79,19 @@ export default function PaperRow({ paper }) {
           <button
             type="button"
             className={styles.iconBtn}
+            onClick={() => setShowIntelligence(true)}
+            title="AI Exam Intelligence"
+            aria-label="AI Exam Intelligence"
+            style={{ color: 'var(--accent-cyan)' }}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            className={styles.iconBtn}
             onClick={handleQuickShare}
             title="Share Website Page Link"
             aria-label="Share website page link"
@@ -112,6 +127,10 @@ export default function PaperRow({ paper }) {
         }}>
           Website page link copied to clipboard!
         </div>
+      )}
+      
+      {showIntelligence && (
+        <ExamIntelligenceModal paper={paper} onClose={() => setShowIntelligence(false)} />
       )}
     </>
   );

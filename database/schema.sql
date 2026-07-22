@@ -80,3 +80,29 @@ CREATE INDEX IF NOT EXISTS idx_papers_erp_resolution
 ON public.papers(university_id, college_id, course_id, semester, subject_name, exam_type)
 WHERE is_published = true AND file_path IS NOT NULL;
 
+-- Paper Intelligence Table
+CREATE TABLE IF NOT EXISTS public.paper_intelligence (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paper_id UUID NOT NULL REFERENCES public.papers(id) ON DELETE CASCADE,
+    syllabus_mapping JSONB NOT NULL DEFAULT '{}'::jsonb,
+    key_topics JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Paper Questions Table
+CREATE TABLE IF NOT EXISTS public.paper_questions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    paper_id UUID NOT NULL REFERENCES public.papers(id) ON DELETE CASCADE,
+    section TEXT NOT NULL,
+    question_type TEXT NOT NULL,
+    question_text TEXT NOT NULL,
+    marks INTEGER NOT NULL,
+    syllabus_unit TEXT,
+    model_answer JSONB NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Add index on paper_id for fast queries
+CREATE INDEX IF NOT EXISTS idx_paper_intelligence_paper_id ON public.paper_intelligence(paper_id);
+CREATE INDEX IF NOT EXISTS idx_paper_questions_paper_id ON public.paper_questions(paper_id);
+

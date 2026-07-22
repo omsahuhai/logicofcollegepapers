@@ -73,9 +73,9 @@ export default function Header({ isLanding = false }) {
           </div>
         </header>
       ) : (
-        savedPapers.length > 0 && (
-          <header className={styles.compactHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <header className={styles.compactHeader}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {savedPapers.length > 0 && (
               <button 
                 className={styles.savedTrigger} 
                 style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem' }}
@@ -87,10 +87,10 @@ export default function Header({ isLanding = false }) {
                 </svg>
                 <span>Saved ({savedPapers.length})</span>
               </button>
-              <ThemeToggle />
-            </div>
-          </header>
-        )
+            )}
+            <ThemeToggle />
+          </div>
+        </header>
       )}
 
       <SavedPapersDrawer 

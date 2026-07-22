@@ -45,3 +45,21 @@ INSERT INTO public.papers (id, university_id, college_id, course_id, semester, e
 -- Paper 3: BSC Sem 4 Chemistry (Nagarjuna Science College)
 ('fa808f77-7684-4efe-a1c5-d44a79efd2f0', '55555555-5555-5555-5555-555555555555', NULL, 'dddddddd-dddd-dddd-dddd-dddddddddddd', 'Semester 4', 'May-June 2026', 'Regular', 'NEP-2020', 'BSC-404', 'Chemistry', 'science clg/bsc/sem 4/2026/CB-404_Digital_OCR_Draft.pdf', 3048576, 8, true)
 ON CONFLICT (id) DO NOTHING;
+
+-- Seed Paper Intelligence for Demo J-2206 (SAGEMMC BCA Sem 1)
+INSERT INTO public.paper_intelligence (paper_id, syllabus_mapping, key_topics)
+VALUES (
+    '47a08056-e018-4266-baeb-7003becb1c72',
+    '{"Unit I": 35, "Unit II": 20, "Unit III": 25, "Unit IV": 20}'::jsonb,
+    '["MS Excel Formulas & Formatting", "Generations of Computers", "MS Word Mail Merge", "PowerPoint Transitions"]'::jsonb
+) ON CONFLICT DO NOTHING;
+
+-- Seed Paper Questions for Demo J-2206 (SAGEMMC BCA Sem 1)
+INSERT INTO public.paper_questions (paper_id, section, question_type, question_text, marks, syllabus_unit, model_answer)
+VALUES
+    ('47a08056-e018-4266-baeb-7003becb1c72', 'A', 'MCQ', '(i) The first generation computers used :', 1, 'Unit I', '{"answer": "Vacuum tubes", "explanation": "First generation computers (1940-1956) relied on vacuum tubes for circuitry and magnetic drums for memory."}'::jsonb),
+    ('47a08056-e018-4266-baeb-7003becb1c72', 'A', 'MCQ', '(ii) Which of the following is not an input device?', 1, 'Unit I', '{"answer": "Monitor", "explanation": "A monitor is an output device that displays processed visual information."}'::jsonb),
+    ('47a08056-e018-4266-baeb-7003becb1c72', 'A', 'MCQ', '(iii) Which of the following is a primary memory?', 1, 'Unit I', '{"answer": "RAM", "explanation": "Random Access Memory (RAM) is the main volatile primary memory of a computer."}'::jsonb),
+    ('47a08056-e018-4266-baeb-7003becb1c72', 'B', 'Short Answer', 'Q2 (i) What is the difference between System Software and Application Software?', 4, 'Unit I', '{"points": ["System Software runs the computer hardware (e.g. OS).", "Application Software performs specific tasks for the user (e.g. MS Word).", "System software runs in the background, Application software runs in the foreground."], "diagrams": []}'::jsonb),
+    ('47a08056-e018-4266-baeb-7003becb1c72', 'Descriptive', 'Descriptive', 'Q3. Explain the classification of computers and their generations in detail.', 10, 'Unit I', '{"points": ["1st Gen: Vacuum tubes.", "2nd Gen: Transistors.", "3rd Gen: ICs.", "4th Gen: Microprocessors.", "5th Gen: AI."], "diagrams": ["Timeline Diagram of Computer Generations"], "conclusion": "Each generation brought a significant reduction in size alongside massive leaps in processing power."}'::jsonb)
+ON CONFLICT DO NOTHING;
